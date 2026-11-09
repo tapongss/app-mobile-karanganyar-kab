@@ -140,3 +140,49 @@ class PortalItem {
     required this.url,
   });
 }
+
+class UserAccount {
+  final String fullName;
+  final String username;
+  final String email;
+  final String phone;
+  final String address;
+  final DateTime birthDate;
+  final String password;
+
+  const UserAccount({
+    required this.fullName,
+    required this.username,
+    required this.email,
+    required this.phone,
+    required this.address,
+    required this.birthDate,
+    required this.password,
+  });
+
+  String get firstName {
+    final parts = fullName.trim().split(RegExp(r'\s+'));
+    return parts.isEmpty ? fullName : parts.first;
+  }
+
+  Map<String, dynamic> toJson() => {
+        'fullName': fullName,
+        'username': username,
+        'email': email,
+        'phone': phone,
+        'address': address,
+        'birthDate': birthDate.toIso8601String(),
+        'password': password,
+      };
+
+  factory UserAccount.fromJson(Map<String, dynamic> json) => UserAccount(
+        fullName: json['fullName'] as String? ?? '',
+        username: json['username'] as String? ?? '',
+        email: json['email'] as String? ?? '',
+        phone: json['phone'] as String? ?? '',
+        address: json['address'] as String? ?? '',
+        birthDate: DateTime.tryParse(json['birthDate'] as String? ?? '') ??
+            DateTime(2000, 1, 1),
+        password: json['password'] as String? ?? '',
+      );
+}

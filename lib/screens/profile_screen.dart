@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../data/catalog_data.dart';
+import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../utils.dart';
 import 'login_screen.dart';
@@ -53,6 +54,80 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  void _showAccountSheet(BuildContext context) {
+    final account = AppSettings.currentAccount.value;
+    if (account == null) return;
+    const months = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+    ];
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 14, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  height: 4,
+                  width: 42,
+                  decoration: BoxDecoration(
+                    color: Theme.of(ctx).colorScheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Data akun',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Informasi yang Anda daftarkan.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 18),
+              _DetailRow(label: 'Nama lengkap', value: account.fullName),
+              _DetailRow(label: 'Username', value: account.username),
+              _DetailRow(label: 'Email', value: account.email),
+              _DetailRow(label: 'No. HP', value: account.phone),
+              _DetailRow(
+                label: 'Tanggal lahir',
+                value:
+                    '${account.birthDate.day} ${months[account.birthDate.month - 1]} ${account.birthDate.year}',
+              ),
+              _DetailRow(label: 'Alamat lengkap', value: account.address),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Tutup'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -70,6 +145,13 @@ class ProfileScreen extends StatelessWidget {
                 context,
                 Column(
                   children: [
+                    _MenuTile(
+                      icon: Icons.badge_outlined,
+                      title: 'Data akun',
+                      subtitle: 'Nama, email, no. HP, dan alamat',
+                      onTap: () => _showAccountSheet(context),
+                    ),
+                    _divider(cs),
                     _MenuTile(
                       icon: Icons.account_balance_outlined,
                       title: 'Perangkat Daerah',
@@ -339,20 +421,27 @@ class _ProfileHeader extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.18),
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          child: const Text(
-                            'Warga Karanganyar',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.3,
+                        ValueListenableBuilder<UserAccount?>(
+                          valueListenable: AppSettings.currentAccount,
+                          builder: (_, account, __) => Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            child: Text(
+                              account == null
+                                  ? 'Warga Karanganyar'
+                                  : '@${account.username}  •  ${account.email}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.3,
+                              ),
                             ),
                           ),
                         ),
@@ -476,6 +565,42 @@ class _MenuTile extends StatelessWidget {
                   size: 20, color: cs.onSurfaceVariant),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _DetailRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w600,
+              height: 1.4,
+            ),
+          ),
+        ],
       ),
     );
   }

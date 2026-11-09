@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../app_state.dart';
+import '../data/auth_service.dart';
 import '../theme/app_theme.dart';
-import 'home_shell.dart';
+import 'register_screen.dart';
+import 'verification_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,32 +13,78 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _name = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _identifier = TextEditingController();
+  final _password = TextEditingController();
+
+  bool _obscure = true;
+  bool _loading = false;
   String? _error;
 
   @override
   void dispose() {
-    _name.dispose();
+    _identifier.dispose();
+    _password.dispose();
     super.dispose();
   }
 
-  void _submit() {
-    final value = _name.text.trim();
-    if (value.isEmpty) {
-      setState(() => _error = 'Nama tidak boleh kosong.');
-      return;
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    FocusScope.of(context).unfocus();
+    try {
+      final challenge = await AuthService.login(
+        identifier: _identifier.text,
+        password: _password.text,
+      );
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => VerificationScreen(challenge: challenge),
+        ),
+      );
+    } on AuthException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } catch (_) {
+      if (mounted) {
+        setState(() =>
+            _error = 'Tidak dapat masuk saat ini. Periksa koneksi Anda.');
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
-    if (value.length < 3) {
-      setState(() => _error = 'Nama minimal 3 karakter.');
-      return;
-    }
-    AppSettings.userName.value = value;
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const HomeShell(),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
-        transitionDuration: const Duration(milliseconds: 400),
+  }
+
+  void _openRegister() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const RegisterScreen()),
+    );
+  }
+
+  void _forgotPassword() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        icon: const Icon(Icons.lock_reset_rounded,
+            color: AppColors.orange, size: 34),
+        title: const Text('Lupa kata sandi?'),
+        content: const Text(
+          'Untuk prototipe ini, kata sandi tidak dapat diatur ulang secara mandiri. '
+          'Silakan daftarkan akun baru atau hubungi Diskominfo Kabupaten Karanganyar.',
+          textAlign: TextAlign.center,
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            style: FilledButton.styleFrom(minimumSize: const Size(120, 44)),
+            child: const Text('Mengerti'),
+          ),
+        ],
       ),
     );
   }
@@ -120,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Satu aplikasi untuk semua layanan\ndigital Kabupaten Karanganyar.',
+                    'Masuk untuk mengakses layanan\ndigital Kabupaten Karanganyar.',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.9),
                       fontSize: 13.5,
@@ -142,80 +189,188 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Kenalan dulu yuk!',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.4,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Cukup isi nama anda, tanpa daftar dan tanpa kata sandi.',
-                          style: TextStyle(
-                            fontSize: 13,
-                            height: 1.5,
-                            color: cs.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        const Text(
-                          'Nama Anda',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: _name,
-                          textCapitalization: TextCapitalization.words,
-                          textInputAction: TextInputAction.done,
-                          onSubmitted: (_) => _submit(),
-                          onChanged: (_) {
-                            if (_error != null) setState(() => _error = null);
-                          },
-                          decoration: InputDecoration(
-                            hintText: 'Contoh: Budi Santoso',
-                            prefixIcon: const Icon(
-                              Icons.person_outline_rounded,
-                              size: 21,
-                            ),
-                            errorText: _error,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton(
-                            onPressed: _submit,
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text('Masuk'),
-                                SizedBox(width: 8),
-                                Icon(Icons.arrow_forward_rounded, size: 19),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Center(
-                          child: Text(
-                            'Data Anda hanya digunakan untuk personalisasi\ntampilan aplikasi.',
-                            textAlign: TextAlign.center,
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Masuk ke akun Anda',
                             style: TextStyle(
-                              fontSize: 10.5,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.4,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Gunakan username dan kata sandi. Kami akan mengirim kode verifikasi ke email terdaftar.',
+                            style: TextStyle(
+                              fontSize: 12.5,
                               height: 1.5,
                               color: cs.onSurfaceVariant,
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 22),
+                          const _FieldLabel('Username atau Email'),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: _identifier,
+                            textInputAction: TextInputAction.next,
+                            autocorrect: false,
+                            decoration: const InputDecoration(
+                              hintText: 'mis. budi_santoso',
+                              prefixIcon:
+                                  Icon(Icons.person_outline_rounded, size: 21),
+                            ),
+                            validator: (v) => (v == null || v.trim().isEmpty)
+                                ? 'Username atau email wajib diisi.'
+                                : null,
+                          ),
+                          const SizedBox(height: 16),
+                          const _FieldLabel('Kata sandi'),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: _password,
+                            obscureText: _obscure,
+                            textInputAction: TextInputAction.done,
+                            onFieldSubmitted: (_) => _submit(),
+                            decoration: InputDecoration(
+                              hintText: 'Masukkan kata sandi',
+                              prefixIcon:
+                                  const Icon(Icons.lock_outline_rounded, size: 21),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscure
+                                      ? Icons.visibility_outlined
+                                      : Icons.visibility_off_outlined,
+                                  size: 20,
+                                ),
+                                onPressed: () =>
+                                    setState(() => _obscure = !_obscure),
+                              ),
+                            ),
+                            validator: (v) => (v == null || v.isEmpty)
+                                ? 'Kata sandi wajib diisi.'
+                                : null,
+                          ),
+                          const SizedBox(height: 4),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: _forgotPassword,
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.orangeDeep,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 4),
+                                minimumSize: const Size(0, 34),
+                                textStyle: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              child: const Text('Lupa kata sandi?'),
+                            ),
+                          ),
+                          if (_error != null) ...[
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFDECEC),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.error_outline_rounded,
+                                      size: 18, color: Color(0xFFD33A3A)),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _error!,
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        color: Color(0xFFD33A3A),
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              onPressed: _loading ? null : _submit,
+                              child: _loading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text('Masuk'),
+                                        SizedBox(width: 8),
+                                        Icon(Icons.arrow_forward_rounded,
+                                            size: 19),
+                                      ],
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Divider(color: cs.outlineVariant),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10),
+                                child: Text(
+                                  'atau',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Divider(color: cs.outlineVariant),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _loading ? null : _openRegister,
+                              icon: const Icon(Icons.person_add_alt_1_rounded,
+                                  size: 19),
+                              label: const Text('Daftar akun baru'),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Center(
+                            child: Text(
+                              'Kode verifikasi 6 digit akan dikirim ke email Anda\nsetelah kata sandi terverifikasi.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                height: 1.5,
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 28),
@@ -247,6 +402,19 @@ class _LoginScreenState extends State<LoginScreen> {
           shape: BoxShape.circle,
         ),
       );
+}
+
+class _FieldLabel extends StatelessWidget {
+  final String text;
+  const _FieldLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+    );
+  }
 }
 
 class _WaveClipper extends CustomClipper<Path> {
